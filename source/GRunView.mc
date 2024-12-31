@@ -104,7 +104,15 @@ class GRunView extends WatchUi.DataField
   
   // GPS Image to display
   protected var imgGPS = WatchUi.loadResource(Rez.Drawables.GPS0);
-  
+
+  // HR Stored independently of the data byte array for the arc display
+  protected var hr = 0;
+  protected var maxHr;
+
+  // Used for arc drawing
+  protected var zonesegmentlength;
+  protected var zoneboundarys as Array<Number>;
+
   // In order to use less memory, numbers have been hardcoded instead of using enum..
   // This makes code less readable, but is required since memory on Garmin watch is very limited
   //enum {
@@ -322,19 +330,21 @@ class GRunView extends WatchUi.DataField
       vData[i] = 0;
     }
     
-    /*
-    log("Area 1: " + getOptionName(v1));
-    log("Area 2a: " + getOptionName(v2));
-    log("Area 2b: " + getOptionName(v3));
-    log("Area 2c: " + getOptionName(v4));
-    log("Area 3a: " + getOptionName(v5));
-    log("Area 3b: " + getOptionName(v6));
-    log("Area 3c: " + getOptionName(v7));
-    log("Area 4a: " + getOptionName(v8));
-    log("Area 4b: " + getOptionName(v9));
-    log("Area 5: " + getOptionName(v10));
+    
+    // log("Area 1: " + getOptionName(v1));
+    // log("Area 2a: " + getOptionName(v2));
+    // log("Area 2b: " + getOptionName(v3));
+    // log("Area 2c: " + getOptionName(v4));
+    // log("Area 3a: " + getOptionName(v5));
+    // log("Area 3b: " + getOptionName(v6));
+    // log("Area 3c: " + getOptionName(v7));
+    // log("Area 4a: " + getOptionName(v8));
+    // log("Area 4b: " + getOptionName(v9));
+    // log("Area 5: " + getOptionName(v10));
     log("HR Zones: " + hrZones);
-    */
+    log("Max HR: " + maxHr);
+    log("Zone Boundarys " + zoneboundarys);
+    
     
     configureAreaHeight();
     assignAreaWidthValues(0, 0, deviceWidth);
@@ -364,6 +374,11 @@ class GRunView extends WatchUi.DataField
     deviceWidth = deviceSettings.screenWidth;
     deviceHeight = deviceSettings.screenHeight;
     hrZones = UserProfile.getHeartRateZones(UserProfile.getCurrentSport());
+    maxHr = Application.getApp().getProperty("maxHr");
+    maxHr = maxHr != null ? maxHr : hrZones[5];
+
+    zonesegmentlength = 29;
+    zoneboundarys = [90+(zonesegmentlength/2)+(2*zonesegmentlength), 90+(zonesegmentlength/2)+zonesegmentlength, 90+(zonesegmentlength/2), 90-(zonesegmentlength/2), 90-(zonesegmentlength/2)-zonesegmentlength, 90-(zonesegmentlength/2)-(2*zonesegmentlength)];
     
     // Initialize 2 dimensional array. The sub-array contains [x,y,width,height]
     for (var i = 0; i < 10; i++ )
@@ -689,6 +704,9 @@ class GRunView extends WatchUi.DataField
       if (vType[i] == 0 /* OPTION_EMPTY */) { continue; }
       vData[i] = computeValue(info, i + 1, vType[i], vData[i]);
     }
+
+    // HR
+    hr = info.currentHeartRate != null ? info.currentHeartRate : 0;
   }
   
   
@@ -770,6 +788,12 @@ class GRunView extends WatchUi.DataField
       drawHeaderLine(dc, 1);
       drawHeaderLine(dc, 4);
     }
+
+    //Arcs
+    var width = dc.getWidth();
+    var height = dc.getHeight();
+		drawZoneBarsArcs(dc, (height/2)+1, width/2, height/2, hr); //radius, center x, center y
+
   }
   
   
@@ -1383,60 +1407,148 @@ class GRunView extends WatchUi.DataField
     dc.drawText(x, y - 1, fontTiny, round(batteryPercentage) + "%", Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
   }
   */
+
+  //! @author Roelof Koelewijn
+    //function for arc
+	function drawZoneBarsArcs(dc, radius, centerX, centerY, hr){
+		
+		var zoneCircleWidth = [5, 5, 5, 5, 5, 5];
+		
+		var i;	
+		for (i = 0; i < hrZones.size() && hr >= hrZones[i]; ++i) { }
+		if(i >= 0){
+			zoneCircleWidth[i] = 10;
+		}
+
+		var zonedegree = zonesegmentlength / (hrZones[1] - hrZones[0]);
+		
+		//zone 1
+		dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+		dc.setPenWidth(zoneCircleWidth[1]);
+		dc.drawArc(centerX, centerY, radius - zoneCircleWidth[1]/2, 1, zoneboundarys[0], zoneboundarys[1]);
+		//zone 2
+		dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
+		dc.setPenWidth(zoneCircleWidth[2]);
+		dc.drawArc(centerX, centerY, radius - zoneCircleWidth[2]/2, 1, zoneboundarys[1], zoneboundarys[2]);
+		//zone 3 OK
+		dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
+		dc.setPenWidth(zoneCircleWidth[3]);
+		dc.drawArc(centerX, centerY, radius - zoneCircleWidth[3]/2, 1, zoneboundarys[2], zoneboundarys[3]);
+		//zone 4
+		dc.setColor(Graphics.COLOR_ORANGE, Graphics.COLOR_TRANSPARENT);
+		dc.setPenWidth(zoneCircleWidth[4]);
+		dc.drawArc(centerX, centerY, radius - zoneCircleWidth[4]/2, 1, zoneboundarys[3],zoneboundarys[4]);
+		//zone 5
+		dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
+		dc.setPenWidth(zoneCircleWidth[5]);
+		dc.drawArc(centerX, centerY, radius - zoneCircleWidth[5]/2, 1, zoneboundarys[4], zoneboundarys[5]);
+		
+		if(hr >= hrZones[0] && hr < hrZones[1]){
+			zonedegree = (zonesegmentlength / (hrZones[1] - hrZones[0])) * (hrZones[1]-hr);
+			dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(15);
+			dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[1] + zonedegree - 3, zoneboundarys[1] + zonedegree + 1);
+			dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(12);
+			dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[1] + zonedegree - 2, zoneboundarys[1] + zonedegree);
+		}else if(hr >= hrZones[1] && hr < hrZones[2]){
+			zonedegree = (zonesegmentlength / (hrZones[2] - hrZones[1])) * (hrZones[2]-hr);
+			dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(15);
+			dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[2] + zonedegree - 3, zoneboundarys[2] + zonedegree + 1);
+			dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(12);
+			dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[2] + zonedegree - 2, zoneboundarys[2] + zonedegree);
+		}else if(hr >= hrZones[2] && hr < hrZones[3]){
+			zonedegree = (zonesegmentlength / (hrZones[3] - hrZones[2])) * (hrZones[3]-hr);
+			dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(15);
+			dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[3] + zonedegree - 3, zoneboundarys[3] + zonedegree + 1);
+			dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(12);
+			dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[3] + zonedegree - 2, zoneboundarys[3] + zonedegree);
+		}else if(hr >= hrZones[3] && hr < hrZones[4]){
+			zonedegree = (zonesegmentlength / (hrZones[4] - hrZones[3])) * (hrZones[4]-hr);
+			dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(15);
+			dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[4] + zonedegree - 3, zoneboundarys[4]  + zonedegree + 1 );
+			dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(12);
+			dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[4]  + zonedegree - 2, zoneboundarys[4] + zonedegree);
+		}else if(hr >= hrZones[4] && hr < maxHr){
+			zonedegree = (zonesegmentlength / (maxHr - hrZones[4])) * (maxHr-hr);
+			dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(15);
+			if((320 + zonedegree) < 360){
+				dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[5]  + zonedegree - 3, zoneboundarys[5] + zonedegree + 1);
+			}else{
+				dc.drawArc(centerX, centerY, radius - 6, 0, -50 + zonedegree - 3 , -50 + zonedegree + 1);
+			}
+			dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(12);
+			if((320 + zonedegree) < 360){
+				dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[5] + zonedegree - 2, zoneboundarys[5] + zonedegree);
+			}else{
+				dc.drawArc(centerX, centerY, radius - 6, 0, -50 + zonedegree -2 , -50 + zonedegree);
+			}
+		}
+		
+		return i;
+	}
   
   
   /* Uncomment for debug purpose only. This part of code is commented to optimize memory usage */
-  //function log(text)
-  //{
-    //var date = Gregorian.info(Time.now(), Time.FORMAT_SHORT);
-    //var formattedDate = date.year + "-" + date.month.format("%02d") + "-" + date.day.format("%02d") + " " + date.hour.format("%02d") + ":" + date.min.format("%02d") + ":" + date.sec.format("%02d");
-    //System.println(formattedDate + " " + text);
-  //}
+  function log(text)
+  {
+    var date = Gregorian.info(Time.now(), Time.FORMAT_SHORT);
+    var formattedDate = date.year + "-" + date.month.format("%02d") + "-" + date.day.format("%02d") + " " + date.hour.format("%02d") + ":" + date.min.format("%02d") + ":" + date.sec.format("%02d");
+    System.println(formattedDate + " " + text);
+  }
   
-  //function getOptionName(type)
-  //{
-    //if (type == 0 /* OPTION_EMPTY */) { return "OPTION_EMPTY"; }
-    //else if (type == 1 /* OPTION_CURRENT_TIME */) { return "OPTION_CURRENT_TIME"; }
-    //else if (type == 2 /* OPTION_TIMER_TIME */) { return "OPTION_TIMER_TIME"; }
-    //else if (type == 5 /* OPTION_ELAPSED_DISTANCE */) { return "OPTION_ELAPSED_DISTANCE"; }
-    //else if (type == 6 /* OPTION_CURRENT_HEART_RATE */) { return "OPTION_CURRENT_HEART_RATE"; }
-    //else if (type == 7 /* OPTION_CURRENT_PACE */) { return "OPTION_CURRENT_PACE"; }
-    //else if (type == 8 /* OPTION_CURRENT_SPEED */) { return "OPTION_CURRENT_SPEED"; }
-    //else if (type == 9 /* OPTION_AVERAGE_HEART_RATE */) { return "OPTION_AVERAGE_HEART_RATE"; }
-    //else if (type == 10 /* OPTION_AVERAGE_PACE */) { return "OPTION_AVERAGE_PACE"; }
-    //else if (type == 12 /* OPTION_AVERAGE_SPEED */) { return "OPTION_AVERAGE_SPEED"; }
-    //else if (type == 13 /* OPTION_CALORIES */) { return "OPTION_CALORIES"; }
-    //else if (type == 14 /* OPTION_CURRENT_CADENCE */) { return "OPTION_CURRENT_CADENCE"; }
-    //else if (type == 15 /* OPTION_ALTITUDE */) { return "OPTION_ALTITUDE"; }
-    //else if (type == 16 /* OPTION_TOTAL_ASCENT */) { return "OPTION_TOTAL_ASCENT"; }
-    //else if (type == 17 /* OPTION_TOTAL_DESCENT */) { return "OPTION_TOTAL_DESCENT"; }
-    //else if (type == 18 /* OPTION_CURRENT_BATTERY */) { return "OPTION_CURRENT_BATTERY"; }
-    //else if (type == 19 /* OPTION_CURRENT_LOCATION_ACCURACY */) { return "OPTION_CURRENT_LOCATION_ACCURACY"; }
-    //else if (type == 20 /* OPTION_CURRENT_LOCATION_ACCURACY_AND_BATTERY */) { return "OPTION_CURRENT_LOCATION_ACCURACY_AND_BATTERY"; }
-    //else if (type == 23 /* OPTION_PREVIOUS_LAP_DISTANCE */) { return "OPTION_PREVIOUS_LAP_DISTANCE"; }
-    //else if (type == 24 /* OPTION_PREVIOUS_LAP_PACE */) { return "OPTION_PREVIOUS_LAP_PACE"; }
-    //else if (type == 25 /* OPTION_CURRENT_LAP_TIME */) { return "OPTION_CURRENT_LAP_TIME"; }
-    //else if (type == 26 /* OPTION_CURRENT_LAP_DISTANCE */) { return "OPTION_CURRENT_LAP_DISTANCE"; }
-    //else if (type == 27 /* OPTION_CURRENT_LAP_PACE */) { return "OPTION_CURRENT_LAP_PACE"; }
-    //else if (type == 28 /* OPTION_TRAINING_EFFECT */) { return "OPTION_TRAINING_EFFECT"; }
-    //else if (type == 30 /* OPTION_PREVIOUS_LAP_TIME */) { return "OPTION_PREVIOUS_LAP_TIME"; }
-    //else if (type == 31 /* OPTION_ETA_LAP */) { return "OPTION_ETA_LAP"; }
-    //else if (type == 32 /* OPTION_LAP_COUNT */) { return "OPTION_LAP_COUNT"; }
-    //else if (type == 33 /* OPTION_AVERAGE_CADENCE */) { return "OPTION_AVERAGE_CADENCE"; }
-    //else if (type == 34 /* OPTION_TIME_OFFSET */) { return "OPTION_TIME_OFFSET"; }
-    //else if (type == 50 /* OPTION_ETA_5K */) { return "OPTION_ETA_5K"; }
-    //else if (type == 51 /* OPTION_ETA_10K */) { return "OPTION_ETA_10K"; }
-    //else if (type == 52 /* OPTION_ETA_HALF_MARATHON */) { return "OPTION_ETA_HALF_MARATHON"; }
-    //else if (type == 53 /* OPTION_ETA_MARATHON */) { return "OPTION_ETA_MARATHON"; }
-    //else if (type == 54 /* OPTION_ETA_100K */) { return "OPTION_ETA_100K"; }
-    //else if (type == 55 /* OPTION_ETA_50K */) { return "OPTION_ETA_50K"; }
-    //else if (type == 56 /* OPTION_REQUIRED_PACE_5K */) { return "OPTION_REQUIRED_PACE_5K"; }
-    //else if (type == 57 /* OPTION_REQUIRED_PACE_10K */) { return "OPTION_REQUIRED_PACE_10K"; }
-    //else if (type == 58 /* OPTION_REQUIRED_PACE_HALF_MARATHON */) { return "OPTION_REQUIRED_PACE_HALF_MARATHON"; }
-    //else if (type == 59 /* OPTION_REQUIRED_PACE_MARATHON */) { return "OPTION_REQUIRED_PACE_MARATHON"; }
-    //else if (type == 60 /* OPTION_REQUIRED_PACE_100K */) { return "OPTION_REQUIRED_PACE_100K"; }
-    //else if (type == 61 /* OPTION_REQUIRED_PACE_50K */) { return "OPTION_REQUIRED_PACE_50K"; }
-    //
-    //return type;
-  //}
+  // function getOptionName(type)
+  // {
+  //   if (type == 0 /* OPTION_EMPTY */) { return "OPTION_EMPTY"; }
+  //   else if (type == 1 /* OPTION_CURRENT_TIME */) { return "OPTION_CURRENT_TIME"; }
+  //   else if (type == 2 /* OPTION_TIMER_TIME */) { return "OPTION_TIMER_TIME"; }
+  //   else if (type == 5 /* OPTION_ELAPSED_DISTANCE */) { return "OPTION_ELAPSED_DISTANCE"; }
+  //   else if (type == 6 /* OPTION_CURRENT_HEART_RATE */) { return "OPTION_CURRENT_HEART_RATE"; }
+  //   else if (type == 7 /* OPTION_CURRENT_PACE */) { return "OPTION_CURRENT_PACE"; }
+  //   else if (type == 8 /* OPTION_CURRENT_SPEED */) { return "OPTION_CURRENT_SPEED"; }
+  //   else if (type == 9 /* OPTION_AVERAGE_HEART_RATE */) { return "OPTION_AVERAGE_HEART_RATE"; }
+  //   else if (type == 10 /* OPTION_AVERAGE_PACE */) { return "OPTION_AVERAGE_PACE"; }
+  //   else if (type == 12 /* OPTION_AVERAGE_SPEED */) { return "OPTION_AVERAGE_SPEED"; }
+  //   else if (type == 13 /* OPTION_CALORIES */) { return "OPTION_CALORIES"; }
+  //   else if (type == 14 /* OPTION_CURRENT_CADENCE */) { return "OPTION_CURRENT_CADENCE"; }
+  //   else if (type == 15 /* OPTION_ALTITUDE */) { return "OPTION_ALTITUDE"; }
+  //   else if (type == 16 /* OPTION_TOTAL_ASCENT */) { return "OPTION_TOTAL_ASCENT"; }
+  //   else if (type == 17 /* OPTION_TOTAL_DESCENT */) { return "OPTION_TOTAL_DESCENT"; }
+  //   else if (type == 18 /* OPTION_CURRENT_BATTERY */) { return "OPTION_CURRENT_BATTERY"; }
+  //   else if (type == 19 /* OPTION_CURRENT_LOCATION_ACCURACY */) { return "OPTION_CURRENT_LOCATION_ACCURACY"; }
+  //   else if (type == 20 /* OPTION_CURRENT_LOCATION_ACCURACY_AND_BATTERY */) { return "OPTION_CURRENT_LOCATION_ACCURACY_AND_BATTERY"; }
+  //   else if (type == 23 /* OPTION_PREVIOUS_LAP_DISTANCE */) { return "OPTION_PREVIOUS_LAP_DISTANCE"; }
+  //   else if (type == 24 /* OPTION_PREVIOUS_LAP_PACE */) { return "OPTION_PREVIOUS_LAP_PACE"; }
+  //   else if (type == 25 /* OPTION_CURRENT_LAP_TIME */) { return "OPTION_CURRENT_LAP_TIME"; }
+  //   else if (type == 26 /* OPTION_CURRENT_LAP_DISTANCE */) { return "OPTION_CURRENT_LAP_DISTANCE"; }
+  //   else if (type == 27 /* OPTION_CURRENT_LAP_PACE */) { return "OPTION_CURRENT_LAP_PACE"; }
+  //   else if (type == 28 /* OPTION_TRAINING_EFFECT */) { return "OPTION_TRAINING_EFFECT"; }
+  //   else if (type == 30 /* OPTION_PREVIOUS_LAP_TIME */) { return "OPTION_PREVIOUS_LAP_TIME"; }
+  //   else if (type == 31 /* OPTION_ETA_LAP */) { return "OPTION_ETA_LAP"; }
+  //   else if (type == 32 /* OPTION_LAP_COUNT */) { return "OPTION_LAP_COUNT"; }
+  //   else if (type == 33 /* OPTION_AVERAGE_CADENCE */) { return "OPTION_AVERAGE_CADENCE"; }
+  //   else if (type == 34 /* OPTION_TIME_OFFSET */) { return "OPTION_TIME_OFFSET"; }
+  //   else if (type == 50 /* OPTION_ETA_5K */) { return "OPTION_ETA_5K"; }
+  //   else if (type == 51 /* OPTION_ETA_10K */) { return "OPTION_ETA_10K"; }
+  //   else if (type == 52 /* OPTION_ETA_HALF_MARATHON */) { return "OPTION_ETA_HALF_MARATHON"; }
+  //   else if (type == 53 /* OPTION_ETA_MARATHON */) { return "OPTION_ETA_MARATHON"; }
+  //   else if (type == 54 /* OPTION_ETA_100K */) { return "OPTION_ETA_100K"; }
+  //   else if (type == 55 /* OPTION_ETA_50K */) { return "OPTION_ETA_50K"; }
+  //   else if (type == 56 /* OPTION_REQUIRED_PACE_5K */) { return "OPTION_REQUIRED_PACE_5K"; }
+  //   else if (type == 57 /* OPTION_REQUIRED_PACE_10K */) { return "OPTION_REQUIRED_PACE_10K"; }
+  //   else if (type == 58 /* OPTION_REQUIRED_PACE_HALF_MARATHON */) { return "OPTION_REQUIRED_PACE_HALF_MARATHON"; }
+  //   else if (type == 59 /* OPTION_REQUIRED_PACE_MARATHON */) { return "OPTION_REQUIRED_PACE_MARATHON"; }
+  //   else if (type == 60 /* OPTION_REQUIRED_PACE_100K */) { return "OPTION_REQUIRED_PACE_100K"; }
+  //   else if (type == 61 /* OPTION_REQUIRED_PACE_50K */) { return "OPTION_REQUIRED_PACE_50K"; }
+    
+  //   return type;
+  // }
 }

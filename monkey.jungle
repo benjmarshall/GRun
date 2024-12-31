@@ -86,7 +86,7 @@ marq2aviator.sourcePath = source;source-highmem;source-highmem-marq2
 oregon7xx.sourcePath = source;source-highmem;source-highmem-oregon7xx
 rino7xx.sourcePath = source;source-highmem;source-highmem-oregon7xx
 fenix6pro.sourcePath = source;source-highmem;source-highmem-fenix6pro
-fenix6prosystem5preview.sourcePath = source;source-highmem;source-highmem-fenix6pro
+#fenix6prosystem5preview.sourcePath = source;source-highmem;source-highmem-fenix6pro
 fenix6spro.sourcePath = source;source-highmem;source-highmem-fenix6xpro
 fenix6xpro.sourcePath = source;source-highmem;source-highmem-fenix6xpro
 
@@ -210,7 +210,7 @@ enduro3.resourcePath = resources;resources-highmem;resources-highmem-power-te
 fenix5x.resourcePath = resources;resources-highmem;resources-highmem-power-te
 fenix5xplus.resourcePath = resources;resources-highmem;resources-highmem-power-te
 fenix6pro.resourcePath = resources;resources-highmem;resources-highmem-power-te
-fenix6prosystem5preview.resourcePath = resources;resources-highmem;resources-highmem-power-te
+#fenix6prosystem5preview.resourcePath = resources;resources-highmem;resources-highmem-power-te
 fenix6spro.resourcePath = resources;resources-highmem;resources-highmem-power-te
 fenix6xpro.resourcePath = resources;resources-highmem;resources-highmem-power-te
 fr745.resourcePath = resources;resources-highmem;resources-highmem-power-te
