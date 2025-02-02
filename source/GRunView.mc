@@ -111,6 +111,7 @@ class GRunView extends WatchUi.DataField
 
   // Used for arc drawing
   protected var zonesegmentlength;
+  protected var zonemargin;
   protected var zoneboundarys as Array<Number>;
 
   // In order to use less memory, numbers have been hardcoded instead of using enum..
@@ -377,8 +378,9 @@ class GRunView extends WatchUi.DataField
     maxHr = Application.getApp().getProperty("maxHr");
     maxHr = maxHr != null ? maxHr : hrZones[5];
 
-    zonesegmentlength = 29;
-    zoneboundarys = [90+(zonesegmentlength/2)+(2*zonesegmentlength), 90+(zonesegmentlength/2)+zonesegmentlength, 90+(zonesegmentlength/2), 90-(zonesegmentlength/2), 90-(zonesegmentlength/2)-zonesegmentlength, 90-(zonesegmentlength/2)-(2*zonesegmentlength)];
+    zonesegmentlength = 19;
+    zonemargin = 1;
+    zoneboundarys = [90+(zonesegmentlength/2)+(2*zonesegmentlength)+(2*zonemargin), 90+(zonesegmentlength/2)+zonesegmentlength+(2*zonemargin), 90+(zonesegmentlength/2)+zonesegmentlength+zonemargin, 90+(zonesegmentlength/2)+zonemargin,90+(zonesegmentlength/2), 90-(zonesegmentlength/2), 90-(zonesegmentlength/2)-zonemargin, 90-(zonesegmentlength/2)-zonesegmentlength-zonemargin, 90-(zonesegmentlength/2)-zonesegmentlength-(2*zonemargin), 90-(zonesegmentlength/2)-(2*zonesegmentlength)-(2*zonemargin)];
     
     // Initialize 2 dimensional array. The sub-array contains [x,y,width,height]
     for (var i = 0; i < 10; i++ )
@@ -732,8 +734,8 @@ class GRunView extends WatchUi.DataField
       dc.setColor(primaryForegroundColor, Graphics.COLOR_TRANSPARENT);
       dc.fillRectangle(vArea[7][0], vArea[7][1], deviceWidth, deviceHeight);
     }
-    
-    // 6 = 0110 (PARAM_ALL_COLOR or PARAM_TOP_BOTTOM_COLOR_)
+
+     // 6 = 0110 (PARAM_ALL_COLOR or PARAM_TOP_BOTTOM_COLOR_)
     // 5 = 0101 (PARAM_ALL_COLOR or PARAM_MIDDLE_COLOR)
     // 4 = 0100 (PARAM_ALL_COLOR)
     // 2 = 0010 (PARAM_TOP_BOTTOM_COLOR)
@@ -747,6 +749,7 @@ class GRunView extends WatchUi.DataField
     var fgColorTopBottomRow = dynamicDataForegroundColor & 0x5;  //dynamicDataForegroundColor == 4 || dynamicDataForegroundColor == 1;
     
     // Display Area
+    dc.setPenWidth(1);
     for (var i = 0; i < 10; i++)
     {
       if (vType[i] == 0 /* OPTION_EMPTY */) { continue; }
@@ -790,9 +793,7 @@ class GRunView extends WatchUi.DataField
     }
 
     //Arcs
-    var width = dc.getWidth();
-    var height = dc.getHeight();
-		drawZoneBarsArcs(dc, (height/2)+1, width/2, height/2, hr); //radius, center x, center y
+		drawZoneBarsArcs(dc, (deviceHeight/2)+1, deviceWidth/2, deviceHeight/2, hr); //radius, center x, center y
 
   }
   
@@ -1006,13 +1007,22 @@ class GRunView extends WatchUi.DataField
       var displayIcon = false;
       
       // Display HR icon if in Area 1, 8, 9 or 10
-      if ( ((type == 6 /* OPTION_CURRENT_HEART_RATE */) || (type == 9 /* OPTION_AVERAGE_HEART_RATE */) || (type == 170 /* OPTION_LAP_AVERAGE_HEART_RATE */)) && (hasHeader == false) )
+      if ( ((type == 6 /* OPTION_CURRENT_HEART_RATE */) || (type == 9 /* OPTION_AVERAGE_HEART_RATE */) || (type == 170 /* OPTION_LAP_AVERAGE_HEART_RATE */)) && (hasHeader == false))
       {
         displayIcon = true;
-        
-        //areaX += 30;     // 24 (iconWidth) + 6 (padding)
+        if (id > 1) 
+        {
+          //areaX += 30;     // 24 (iconWidth) + 6 (padding)
+          areaWidth -= 30;   // 24 (iconWidth) + 6 (padding)
+          areaXcenter += 15; // (24 (iconWidth) + 6 (padding)) / 2
+        }
+      }
+
+      if (id == 1) 
+      {
         areaWidth -= 30;   // 24 (iconWidth) + 6 (padding)
-        areaXcenter += 15; // (24 (iconWidth) + 6 (padding)) / 2
+        areaHeight -= 10; // (24 (iconWidth) + 6 (padding)) / 2
+        areaYcenter += 5; // (24 (iconWidth) + 6 (padding)) / 2
       }
       
       var formattedValue = getFormattedValue(id, type, value);
@@ -1413,87 +1423,88 @@ class GRunView extends WatchUi.DataField
 	function drawZoneBarsArcs(dc, radius, centerX, centerY, hr){
 		
 		var zoneCircleWidth = [5, 5, 5, 5, 5, 5];
+    var zoneOffset = [4, 4, 4, 4, 4, 4];
 		
 		var i;	
 		for (i = 0; i < hrZones.size() && hr >= hrZones[i]; ++i) { }
 		if(i >= 0){
 			zoneCircleWidth[i] = 10;
+      zoneOffset[i] = 2;
 		}
 
 		var zonedegree = zonesegmentlength / (hrZones[1] - hrZones[0]);
-		
+
+    var primaryBackgroundColor = null;
+    if (primaryForegroundColor == Graphics.COLOR_BLACK) {
+      primaryBackgroundColor = Graphics.COLOR_WHITE;
+    } else {
+      primaryBackgroundColor = Graphics.COLOR_BLACK;
+    }
+
+   	
 		//zone 1
 		dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
 		dc.setPenWidth(zoneCircleWidth[1]);
-		dc.drawArc(centerX, centerY, radius - zoneCircleWidth[1]/2, 1, zoneboundarys[0], zoneboundarys[1]);
+		dc.drawArc(centerX, centerY, radius - zoneCircleWidth[1]/2 - zoneOffset[1], 1, zoneboundarys[0], zoneboundarys[1]);
 		//zone 2
 		dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
 		dc.setPenWidth(zoneCircleWidth[2]);
-		dc.drawArc(centerX, centerY, radius - zoneCircleWidth[2]/2, 1, zoneboundarys[1], zoneboundarys[2]);
+		dc.drawArc(centerX, centerY, radius - zoneCircleWidth[2]/2 - zoneOffset[2], 1, zoneboundarys[2], zoneboundarys[3]);
 		//zone 3 OK
 		dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
 		dc.setPenWidth(zoneCircleWidth[3]);
-		dc.drawArc(centerX, centerY, radius - zoneCircleWidth[3]/2, 1, zoneboundarys[2], zoneboundarys[3]);
+		dc.drawArc(centerX, centerY, radius - zoneCircleWidth[3]/2 - zoneOffset[3], 1, zoneboundarys[4], zoneboundarys[5]);
 		//zone 4
 		dc.setColor(Graphics.COLOR_ORANGE, Graphics.COLOR_TRANSPARENT);
 		dc.setPenWidth(zoneCircleWidth[4]);
-		dc.drawArc(centerX, centerY, radius - zoneCircleWidth[4]/2, 1, zoneboundarys[3],zoneboundarys[4]);
+		dc.drawArc(centerX, centerY, radius - zoneCircleWidth[4]/2 - zoneOffset[4], 1, zoneboundarys[6],zoneboundarys[7]);
 		//zone 5
 		dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
 		dc.setPenWidth(zoneCircleWidth[5]);
-		dc.drawArc(centerX, centerY, radius - zoneCircleWidth[5]/2, 1, zoneboundarys[4], zoneboundarys[5]);
+		dc.drawArc(centerX, centerY, radius - zoneCircleWidth[5]/2 - zoneOffset[5], 1, zoneboundarys[8], zoneboundarys[9]);
 		
 		if(hr >= hrZones[0] && hr < hrZones[1]){
 			zonedegree = (zonesegmentlength / (hrZones[1] - hrZones[0])) * (hrZones[1]-hr);
-			dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-			dc.setPenWidth(15);
-			dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[1] + zonedegree - 3, zoneboundarys[1] + zonedegree + 1);
-			dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
-			dc.setPenWidth(12);
-			dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[1] + zonedegree - 2, zoneboundarys[1] + zonedegree);
+			dc.setColor(primaryForegroundColor, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(14);
+			dc.drawArc(centerX, centerY, radius - 7, 0, zoneboundarys[1] + zonedegree - 2, zoneboundarys[1] + zonedegree + 1);
+			dc.setColor(primaryBackgroundColor, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(16);
+			dc.drawArc(centerX, centerY, radius - 8, 0, zoneboundarys[1] + zonedegree - 1, zoneboundarys[1] + zonedegree);
 		}else if(hr >= hrZones[1] && hr < hrZones[2]){
 			zonedegree = (zonesegmentlength / (hrZones[2] - hrZones[1])) * (hrZones[2]-hr);
-			dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-			dc.setPenWidth(15);
-			dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[2] + zonedegree - 3, zoneboundarys[2] + zonedegree + 1);
-			dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
-			dc.setPenWidth(12);
-			dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[2] + zonedegree - 2, zoneboundarys[2] + zonedegree);
+			dc.setColor(primaryForegroundColor, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(14);
+			dc.drawArc(centerX, centerY, radius - 7, 0, zoneboundarys[3] + zonedegree - 2, zoneboundarys[3] + zonedegree + 1);
+			dc.setColor(primaryBackgroundColor, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(16);
+			dc.drawArc(centerX, centerY, radius - 8, 0, zoneboundarys[3] + zonedegree - 1, zoneboundarys[3] + zonedegree);
 		}else if(hr >= hrZones[2] && hr < hrZones[3]){
 			zonedegree = (zonesegmentlength / (hrZones[3] - hrZones[2])) * (hrZones[3]-hr);
-			dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-			dc.setPenWidth(15);
-			dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[3] + zonedegree - 3, zoneboundarys[3] + zonedegree + 1);
-			dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
-			dc.setPenWidth(12);
-			dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[3] + zonedegree - 2, zoneboundarys[3] + zonedegree);
+			dc.setColor(primaryForegroundColor, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(14);
+			dc.drawArc(centerX, centerY, radius - 7, 0, zoneboundarys[5] + zonedegree - 2, zoneboundarys[5] + zonedegree + 1);
+			dc.setColor(primaryBackgroundColor, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(16);
+			dc.drawArc(centerX, centerY, radius - 8, 0, zoneboundarys[5] + zonedegree - 1, zoneboundarys[5] + zonedegree);
 		}else if(hr >= hrZones[3] && hr < hrZones[4]){
 			zonedegree = (zonesegmentlength / (hrZones[4] - hrZones[3])) * (hrZones[4]-hr);
-			dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-			dc.setPenWidth(15);
-			dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[4] + zonedegree - 3, zoneboundarys[4]  + zonedegree + 1 );
-			dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
-			dc.setPenWidth(12);
-			dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[4]  + zonedegree - 2, zoneboundarys[4] + zonedegree);
+			dc.setColor(primaryForegroundColor, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(14);
+			dc.drawArc(centerX, centerY, radius - 7, 0, zoneboundarys[7] + zonedegree - 2, zoneboundarys[7]  + zonedegree + 1 );
+			dc.setColor(primaryBackgroundColor, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(16);
+			dc.drawArc(centerX, centerY, radius - 8, 0, zoneboundarys[7]  + zonedegree - 1, zoneboundarys[7] + zonedegree);
 		}else if(hr >= hrZones[4] && hr < maxHr){
 			zonedegree = (zonesegmentlength / (maxHr - hrZones[4])) * (maxHr-hr);
-			dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-			dc.setPenWidth(15);
-			if((320 + zonedegree) < 360){
-				dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[5]  + zonedegree - 3, zoneboundarys[5] + zonedegree + 1);
-			}else{
-				dc.drawArc(centerX, centerY, radius - 6, 0, -50 + zonedegree - 3 , -50 + zonedegree + 1);
-			}
-			dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
-			dc.setPenWidth(12);
-			if((320 + zonedegree) < 360){
-				dc.drawArc(centerX, centerY, radius - 6, 0, zoneboundarys[5] + zonedegree - 2, zoneboundarys[5] + zonedegree);
-			}else{
-				dc.drawArc(centerX, centerY, radius - 6, 0, -50 + zonedegree -2 , -50 + zonedegree);
-			}
+			dc.setColor(primaryForegroundColor, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(14);
+			dc.drawArc(centerX, centerY, radius - 7, 0, zoneboundarys[9]  + zonedegree - 2, zoneboundarys[9] + zonedegree + 1);
+			dc.setColor(primaryBackgroundColor, Graphics.COLOR_TRANSPARENT);
+			dc.setPenWidth(16);
+			dc.drawArc(centerX, centerY, radius - 8, 0, zoneboundarys[9] + zonedegree - 1, zoneboundarys[9] + zonedegree);
 		}
-		
-		return i;
+
 	}
   
   
