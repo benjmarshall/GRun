@@ -1,5 +1,5 @@
 @echo off
-SET SRCFOLDER=..\..\Git\GRun
+SET SRCFOLDER=..\..\GRun
 SET DESTFOLDER=%cd%
 cd /D "%DESTFOLDER%"
 
@@ -21,8 +21,7 @@ FOR /F "delims=" %%d in ('dir "%SRCFOLDER%" /ad /b') DO (
 pause
 
 echo "Copy files from: %SRCFOLDER%"
-cd /D "%SRCFOLDER%"
-COPY "monkey.jungle" "%DESTFOLDER%\"
+COPY "%SRCFOLDER%\monkey.jungle" "%DESTFOLDER%\"
 FOR /F "delims=" %%d in ('dir "%SRCFOLDER%" /ad /b') DO (
   IF "%%d" == "doc" (
    REM SKIP folder
@@ -31,7 +30,7 @@ FOR /F "delims=" %%d in ('dir "%SRCFOLDER%" /ad /b') DO (
   ) ELSE IF "%%d" == "bin" (
    REM SKIP folder
   )ELSE (
-    XCOPY /s "%%d" "%DESTFOLDER%\%%d"
+    XCOPY /s "%SRCFOLDER%\%%d" "%DESTFOLDER%\%%d"
   )
 )
 
@@ -41,3 +40,5 @@ echo "Change AppName in file: %DESTFOLDER%\resources\strings\strings.xml"
 echo.
 pause
 "C:\Program Files\Notepad++\notepad++.exe" "%DESTFOLDER%\resources\strings\strings.xml"
+
+cd /D "%SRCFOLDER%"
